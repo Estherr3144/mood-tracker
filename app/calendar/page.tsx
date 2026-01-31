@@ -1,64 +1,68 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { getMoods } from "@/lib/moodStorage";
 import { MOODS } from "@/config/moods";
 import { MoodEntry } from "@/types/mood";
 
-type DailyMood = {
-  date: string;
-  avgScore: number;
-};
-
 export default function CalendarPage() {
-  const moods: MoodEntry[] = getMoods(); // ✅ 用 getMoods
+  const [dailyMoods, setDailyMoods] = useState<Record<string, number>>({});
 
-  // 👉 按日期分组
-  const moodByDate: Record<string, number[]> = {};
+  // ✅ 获取 mood 数据
+  useEffect(() => {
+    const moods: MoodEntry[] = getMoods();
+    const grouped: Record<string, number[]> = {};
+    moods.forEach((m) => {
+      if (!grouped[m.date]) grouped[m.date] = [];
+      grouped[m.date].push(m.score);
+    });
 
-  moods.forEach((mood) => {
-    if (!moodByDate[mood.date]) {
-      moodByDate[mood.date] = [];
+    const avg: Record<string, number> = {};
+    for (const date in grouped) {
+      const scores = grouped[date];
+      avg[date] = scores.reduce((a, b) => a + b, 0) / scores.length;
     }
-    moodByDate[mood.date].push(mood.score);
-  });
+    setDailyMoods(avg);
+  }, []);
 
-  // 👉 每天算平均 mood
-  const dailyMoods: DailyMood[] = Object.entries(moodByDate).map(
-    ([date, scores]) => ({
-      date,
-      avgScore: scores.reduce((sum, s) => sum + s, 0) / scores.length,
-    })
-  );
+  // ✅ 生成当前月份
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth(); // 0~11
+  const firstDay = new Date(year, month, 1).getDay(); // 星期几 0~6
+  const lastDate = new Date(year, month + 1, 0).getDate();
 
-  // 👉 找最接近的 mood
-  const getMoodByScore = (score: number) => {
-    return MOODS.reduce((closest, mood) =>
-      Math.abs(mood.score - score) < Math.abs(closest.score - score)
-        ? mood
-        : closest
+  const days: (number | null)[] = Array(firstDay).fill(null);
+  for (let d = 1; d <= lastDate; d++) days.push(d);
+
+  // ✅ helper: 找最接近的 mood
+  const getMoodByScore = (score: number) =>
+    MOODS.reduce((closest, m) =>
+      Math.abs(m.score - score) < Math.abs(closest.score - score) ? m : closest
     );
-  };
 
   return (
-    <main className="min-h-screen p-6 bg-gray-50">
+    <main className="p-6 min-h-screen bg-gray-50">
       <h1 className="text-2xl font-bold mb-4">📅 Mood Calendar</h1>
 
-      {dailyMoods.length === 0 && (
-        <p className="text-gray-500">No mood records yet.</p>
-      )}
+      <div className="grid grid-cols-7 gap-2 text-center">
+        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d) => (
+          <div key={d} className="font-bold">{d}</div>
+        ))}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {dailyMoods.map((day) => {
-          const mood = getMoodByScore(day.avgScore);
+        {days.map((d, idx) => {
+          if (!d) return <div key={idx}></div>;
+          const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2,"0")}`;
+          const score = dailyMoods[dateStr];
+          const mood = score ? getMoodByScore(score) : null;
 
           return (
             <div
-              key={day.date}
-              className="bg-white p-4 rounded shadow text-center"
+              key={idx}
+              className="bg-white p-2 rounded shadow min-h-[60px] flex flex-col items-center justify-center"
             >
-              <p className="text-sm text-gray-500">{day.date}</p>
-              <div className="text-3xl">{mood.emoji}</div>
-              <p className="text-sm">{mood.label}</p>
+              <span className="text-sm">{d}</span>
+              <span className="text-2xl">{mood?.emoji}</span>
             </div>
           );
         })}
