@@ -1,72 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { getMoods } from "@/lib/moodStorage";
-import { MOODS } from "@/config/moods";
-import { MoodEntry } from "@/types/mood";
+import CalendarMonth from "@/components/CalendarMonth";
+import CalendarYear from "@/components/CalendarYear";
+import MonthNav from "@/components/MonthNav";
+import YearNav from "@/components/YearNav";
 
 export default function CalendarPage() {
-  const [dailyMoods, setDailyMoods] = useState<Record<string, number>>({});
-
-  // ✅ 获取 mood 数据
-  useEffect(() => {
-    const moods: MoodEntry[] = getMoods();
-    const grouped: Record<string, number[]> = {};
-    moods.forEach((m) => {
-      if (!grouped[m.date]) grouped[m.date] = [];
-      grouped[m.date].push(m.score);
-    });
-
-    const avg: Record<string, number> = {};
-    for (const date in grouped) {
-      const scores = grouped[date];
-      avg[date] = scores.reduce((a, b) => a + b, 0) / scores.length;
-    }
-    setDailyMoods(avg);
-  }, []);
-
-  // ✅ 生成当前月份
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth(); // 0~11
-  const firstDay = new Date(year, month, 1).getDay(); // 星期几 0~6
-  const lastDate = new Date(year, month + 1, 0).getDate();
-
-  const days: (number | null)[] = Array(firstDay).fill(null);
-  for (let d = 1; d <= lastDate; d++) days.push(d);
-
-  // ✅ helper: 找最接近的 mood
-  const getMoodByScore = (score: number) =>
-    MOODS.reduce((closest, m) =>
-      Math.abs(m.score - score) < Math.abs(closest.score - score) ? m : closest
-    );
+  const [view, setView] = useState<"month" | "year">("month");
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [month, setMonth] = useState(new Date().getMonth());
+  const allMoods = getMoods();
 
   return (
     <main className="p-6 min-h-screen bg-gray-50">
-      <h1 className="text-2xl font-bold mb-4">📅 Mood Calendar</h1>
-
-      <div className="grid grid-cols-7 gap-2 text-center">
-        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d) => (
-          <div key={d} className="font-bold">{d}</div>
-        ))}
-
-        {days.map((d, idx) => {
-          if (!d) return <div key={idx}></div>;
-          const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2,"0")}`;
-          const score = dailyMoods[dateStr];
-          const mood = score ? getMoodByScore(score) : null;
-
-          return (
-            <div
-              key={idx}
-              className="bg-white p-2 rounded shadow min-h-[60px] flex flex-col items-center justify-center"
-            >
-              <span className="text-sm">{d}</span>
-              <span className="text-2xl">{mood?.emoji}</span>
-            </div>
-          );
-        })}
+      <div className="flex gap-2 mb-4">
+        <button onClick={() => setView("month")} className={`px-3 py-1 rounded ${view==="month" ? "bg-blue-500 text-white" : "bg-gray-200"}`}>月视图</button>
+        <button onClick={() => setView("year")} className={`px-3 py-1 rounded ${view==="year" ? "bg-blue-500 text-white" : "bg-gray-200"}`}>年视图</button>
       </div>
+
+      {view === "month" && (
+        <>
+          <MonthNav year={year} month={month} setYear={setYear} setMonth={setMonth} />
+          <CalendarMonth year={year} month={month} allMoods={allMoods} />
+        </>
+      )}
+
+
+console.log("📅 CalendarPage render, view =", view);
+ {view === "year" && (
+  <>
+    <YearNav year={year} setYear={setYear} />
+    <CalendarYear year={year} allMoods={allMoods} />
+  </>
+)}
+
     </main>
   );
 }
