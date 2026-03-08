@@ -5,10 +5,11 @@ export type MoodType =
   | "bad"
   | "awful";
 
-export interface MoodEntry {
+export type MoodEntry = 
+{
   id: string;
-  mood: MoodType;
+  date: string;
+  //mood: number;
   score: number;
-  date: string;      
-  createdAt: number; 
-}
+  //createdAt: string;
+};

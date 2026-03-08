@@ -1,37 +1,98 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { MoodEntry } from "@/types/mood";
-import { MOODS } from "@/config/moods";
+import {MoodEntry} from "@/types/mood";
+import {MOODS} from "@/config/moods";
 
-type Props = { year: number; allMoods: MoodEntry[] };
-
-export default function CalendarYear({ year, allMoods }: Props) 
+type Props = 
 {
-  const [monthAvg, setMonthAvg] = useState<(typeof MOODS[0] | null)[]>([]);
+  year: number;
+  allMoods: MoodEntry[];
+};
 
-  useEffect(() => {
-    const avg = Array.from({ length: 12 }, (_, m) => {
-      const monthMoods = allMoods.filter(mo => {
-        const d = new Date(mo.date);
-        return d.getFullYear() === year && d.getMonth() === m;
-      });
-      if (!monthMoods.length) return null;
-      const avgScore = monthMoods.reduce((sum, mo) => sum + mo.score, 0) / monthMoods.length;
-      return MOODS.reduce((closest, mood) =>
-        Math.abs(mood.score - avgScore) < Math.abs(closest.score - avgScore) ? mood : closest
-      );
+const monthNames = 
+[
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+export default function CalendarYear({year, allMoods}: Props) 
+{
+  //calculate average mood for each month
+  const monthAvg = [];
+
+  for (let m = 0; m < 12; m++) {
+    //get all moods for this month
+    const monthMoods = allMoods.filter((entry) => {
+      const d = new Date(entry.date);
+      return d.getFullYear() === year && d.getMonth() === m;
     });
-    setMonthAvg(avg);
-  }, [allMoods, year]); 
+
+    //skip if no entries for this month
+    if (monthMoods.length === 0) 
+    {
+      monthAvg.push(null);
+      continue;
+    }
+
+    //calculate average score
+    let total = 0;
+
+    for (const entry of monthMoods) 
+    {
+      total += entry.score;
+    }
+
+    const avg = total / monthMoods.length;
+
+    //find mood that's closest to the average
+    let closestMood = MOODS[0];
+
+    for (const mood of MOODS) 
+    {
+      const currentDiff = Math.abs(mood.score - avg);
+      const closestDiff = Math.abs(closestMood.score - avg);
+
+      if (currentDiff < closestDiff) 
+      {
+        closestMood = mood;
+      }
+    }
+
+    monthAvg.push(closestMood);
+  }
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    //grid of month cards
+    <div 
+      className="grid grid-cols-2 sm:grid-cols-3 gap-4">
       {monthAvg.map((mood, idx) => (
-        <div key={idx} className="p-4 bg-white rounded shadow flex flex-col items-center">
-          <span>{idx + 1}月</span>
-          <span className="text-3xl">{mood?.emoji || "–"}</span>
-          <span>{mood?.label || "No data"}</span>
+        <div
+          key={idx}
+          className="p-4 bg-white rounded-2xl shadow border border-pink-100 flex flex-col items-center"
+        >
+          {/* month name */}
+          <span 
+            className="text-sm text-gray-500 mb-1">{monthNames[idx]}</span>
+          
+          {/* mood emoji */}
+          <span  
+            className="text-3xl mb-1">{mood?.emoji || "–"}</span>
+          
+            {/* mood label */}
+          <span 
+            className="text-sm font-medium">
+            {mood?.label || "No data"}
+          </span>
         </div>
       ))}
     </div>
